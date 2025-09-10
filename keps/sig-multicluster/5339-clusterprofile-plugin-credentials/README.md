@@ -296,7 +296,6 @@ type Cluster struct {
 In this structure, not all fields would apply, such as:
 
 * `CertificateAuthority`, which points to a file (and a ClusterProfile doesn't have a filesystem)
-* `Extensions` (see the explanation below)
 
 ##### About the `Extensions` field
 
@@ -320,25 +319,35 @@ In addition:
 
 * without proper hints, it would not be clear how the data from the `client.authentication.k8s.io/exec` extension entry should be parsed; to use the data,
 the credential provider code must know a concrete object type that implements `runtime.Object` so that it could deserialize the data, in the form of
-`runtime.RawExtension` to the object type.
+`runtime.RawExtension`, to the object type; or choose to use `runtime.Unknown` as the object type.
 * whether the data from the `extensions` field can be seen by the exec plugin is ultimately decided by the `ProvideClusterInfo` flag in the `ExecConfig`, which
-is solely controlled by the credential provider code. There are also cases where setting the flag to true is not desirable or practicable, as it might involve
-writing very large CA data; note also that the default value for `ProvideClusterInfo` is set to false.
+is solely controlled by the credential provider code. If the flag is unset, any extension set on the cluster profile object will not used at all. Note also 
+that the default value for `ProvideClusterInfo` is set to false.
+* there are also cases where setting the flag to true is not desirable or practicable, as it might involve writing a very large piece of CA data as an environment
+variable.
 
 For the reasons explicated above, it is suggested that, when setting the `Cluster` struct in a `ClusterProfile` object, the `extensions` field should
-not be used. The authentication library provided by the Cluster Inventory API should ignore this field.
+be used on a user-beware basis. Users should only populate this field if they are certain that:
 
-With these being said, depending on the authentication method to use, users might still need to provide cluster-specific information to the exec plugin to complete
-the authentication workflow; the information might include client IDs, tenant IDs, and/or audiences. Such information is very difficult to handle on the controller
-side as it either requires engineers to hard-code the values for each cluster, or implement some form dynamic discovery mechanism. To facilitate such use cases,
-this KEP defines extensions on the credential provider scope in the Cluster Profile API, as specified in the next section, so that cluster-specific information,
-if applicable, can be discovered via the Cluster Profile API.
+* The credential provider code can handle the extension data properly; specifically:
+    * it will source the `ExecConfig.Config` field with the extension data;
+    * it has the `ProvideClusterInfo` field set to true;
+    * it knows how to deserialize the extension data into a object type that is supported by the exec plugin.
+* The `KUBERNETES_EXEC_INFO` environment variable can be set in the environment (the size limit, if any, can be satisfied).
+* The exec plugin will read the `KUBERNETES_EXEC_INFO` environment variable and extract the extension data.
+
+Considering the complications with the usage of `extensions` field in a multi-cluster environment for authentication, users might need a more direct way
+to provide cluster-specific information to the exec plugin to complete the authentication workflow; the information might include client IDs,
+tenant IDs, and/or audiences. Such information is very difficult to handle on the controller side as it either requires engineers to hard-code
+the values for each cluster, or implement some form dynamic discovery mechanism. To facilitate such use cases, this KEP defines extensions on
+the credential provider scope in the Cluster Profile API, as specified in the next section, so that cluster-specific information, if applicable,
+can be discovered via the Cluster Profile API.
 
 #### Extensions
 
 The `extensions` field in a credential provider object, as added by this KEP to the Cluster Profile API, holds additional configuration that might help
-the credential provider code reading a `ClusterProfile` object to complete the exec plugin based authentication workflow. Each extension entry is uniquely
-identified by a name, and features a piece of arbitrary data; it is up to the credential provider code the process and apply the data.
+the credential provider code complete the exec plugin based authentication workflow. Each extension entry is uniquely identified by a name, and features
+a piece of arbitrary data; it is up to the credential provider code the process and apply the data.
 
 Furthermore, this KEP reserves the following two extension names and dictates how the additional configuration should be formatted and used under the two names:
 
