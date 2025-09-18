@@ -234,17 +234,17 @@ type CredentialProviders struct {
 // CredentialsTypes defines the type of credentials that are accepted by the cluster. For example, GCP credentials (tokens that are understood by GCP's IAM) are designated by the string `google`.
 type CredentialsType string
 
-// NamedExtension is a piece of additional configuration with a nickname.
-type NamedExtension struct {
+// SupplementalInformation is a piece of additional configuration with a nickname.
+type SupplementalInformation struct {
   Name string
-  Extension runtime.RawExtension
+  Data runtime.RawExtension
 }
 
 // CredentialsConfig gives more details on data that is necessary to reach out the cluster for this kind of Credentials
 type CredentialsConfig struct {
   Name string // name of the provider type
   Cluster *Cluster // Configuration to reach the cluster (endpoints, proxy, etc) // See the sections below for details.
-  Extensions []NamedExtension // Extensions hold additional configuration that might be of use to the credential provider. See the sections below for details.
+  SupplementalInfo []SupplementalInformation // SupplementalInfo holds additional configuration that might be of use to the credential provider. See the sections below for details.
 }
 ```
 
@@ -343,13 +343,13 @@ the values for each cluster, or implement some form dynamic discovery mechanism.
 the credential provider scope in the Cluster Profile API, as specified in the next section, so that cluster-specific information, if applicable,
 can be discovered via the Cluster Profile API.
 
-#### Extensions
+#### `SupplementalInfo`
 
-The `extensions` field in a credential provider object, as added by this KEP to the Cluster Profile API, holds additional configuration that might help
-the credential provider code complete the exec plugin based authentication workflow. Each extension entry is uniquely identified by a name, and features
+The `SupplementalInfo` field in a credential provider object, as added by this KEP to the Cluster Profile API, holds additional configuration that might help
+the credential provider code complete the exec plugin based authentication workflow. Each additional configuration entry is uniquely identified by a name, and features
 a piece of arbitrary data; it is up to the credential provider code the process and apply the data.
 
-Furthermore, this KEP reserves the following two extension names and dictates how the additional configuration should be formatted and used under the two names:
+Furthermore, this KEP reserves the following two names and dictates how the additional configuration should be formatted and used under the two names:
 
 * `multicluster.x-k8s.io/clusterprofiles/auth/exec/additional-args`
 
